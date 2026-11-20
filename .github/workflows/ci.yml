@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, production]
+
+env:
+  MINIMUM_LINE_COVERAGE: 0.5
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore RepairIT.sln
+
+      - name: Build
+        run: dotnet build RepairIT.sln --no-restore --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test RepairIT.sln --no-build --configuration Release -m:1
+          --settings coverlet.runsettings
+          --collect:"XPlat Code Coverage"
+          --results-directory coverage
+
+      - name: Generate coverage report
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:"coverage/**/coverage.cobertura.xml" \
+            -targetdir:coverage-report \
+            -reporttypes:"MarkdownSummaryGithub;Cobertura;HtmlInline"
+          cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-report
+
+      - name: Check minimum coverage
+        run: |
+          rate=$(grep -oP '<coverage line-rate="\K[0-9.]+' coverage-report/Cobertura.xml)
+          percent=$(awk "BEGIN { printf \"%.1f\", $rate * 100 }")
+          echo "Line coverage: $percent%"
+          if awk "BEGIN { exit !($rate < $MINIMUM_LINE_COVERAGE) }"; then
+            echo "::error::Line coverage $percent% is below the required minimum"
+            exit 1
+          fi
