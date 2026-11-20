@@ -1,0 +1,23 @@
+name: Auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  enable-auto-merge:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Squash keeps main readable; a merge commit keeps production in sync with main's history
+          MERGE_METHOD: ${{ github.event.pull_request.base.ref == 'production' && '--merge' || '--squash' }}
+        run: gh pr merge "$PR_NUMBER" --auto "$MERGE_METHOD"
