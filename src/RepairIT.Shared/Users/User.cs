@@ -6,7 +6,7 @@ public class User
 {
     public Guid Id { get; init; } = Guid.NewGuid();
 
-    // Keycloak is not integrated yet: every user keeps this placeholder until V5
+    // keycloak arrive en v5, en attendant on met une valeur par defaut
     public Guid KeycloakUserId { get; set; } = Guid.Empty;
 
     [Required, MaxLength(100)]
