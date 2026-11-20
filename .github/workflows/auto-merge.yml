@@ -10,7 +10,8 @@ permissions:
 
 jobs:
   enable-auto-merge:
-    if: github.event.pull_request.draft == false
+    # pas de merge auto vers production, le prof doit pouvoir relire et noter avant
+    if: github.event.pull_request.draft == false && github.event.pull_request.base.ref != 'production'
     runs-on: ubuntu-latest
     steps:
       - name: Enable auto-merge
@@ -18,6 +19,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          # Squash keeps main readable; a merge commit keeps production in sync with main's history
-          MERGE_METHOD: ${{ github.event.pull_request.base.ref == 'production' && '--merge' || '--squash' }}
-        run: gh pr merge "$PR_NUMBER" --auto "$MERGE_METHOD"
+        run: gh pr merge "$PR_NUMBER" --auto --squash
